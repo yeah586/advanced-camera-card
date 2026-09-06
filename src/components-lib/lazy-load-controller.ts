@@ -2,8 +2,6 @@ import type { ReactiveController, ReactiveControllerHost } from 'lit';
 
 import type { LazyUnloadCondition } from '../config/schema/common/media-actions';
 
-type LazyLoadListener = (loaded: boolean) => void;
-
 interface LazyLoadConfiguration {
   // Whether to wait for the host to intersect (and the document to be visible)
   // before loading. `false` loads eagerly on first call.
@@ -27,7 +25,6 @@ export class LazyLoadController implements ReactiveController {
   private _intersectionObserver = new IntersectionObserver(
     this._intersectionHandler.bind(this),
   );
-  private _listeners: LazyLoadListener[] = [];
 
   constructor(host: ReactiveControllerHost & HTMLElement) {
     this._host = host;
@@ -50,19 +47,10 @@ export class LazyLoadController implements ReactiveController {
 
   public destroy(): void {
     this._removeEventHandlers();
-    this._listeners = [];
   }
 
   public isLoaded(): boolean {
     return this._loaded;
-  }
-
-  public addListener(listener: LazyLoadListener): void {
-    this._listeners.push(listener);
-  }
-
-  public removeListener(listener: LazyLoadListener): void {
-    this._listeners = this._listeners.filter((l) => l !== listener);
   }
 
   public removeController(): void {
@@ -111,12 +99,7 @@ export class LazyLoadController implements ReactiveController {
 
   private _setLoaded(loaded: boolean): void {
     this._loaded = loaded;
-    this._notifyListeners();
     this._host.requestUpdate();
-  }
-
-  private _notifyListeners(): void {
-    this._listeners.forEach((listener) => listener(this._loaded));
   }
 
   private _intersectionHandler(entries: IntersectionObserverEntry[]): void {

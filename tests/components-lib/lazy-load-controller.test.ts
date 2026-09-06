@@ -68,16 +68,13 @@ describe('LazyLoadController', () => {
     expect(host.removeController).toHaveBeenCalledWith(controller);
   });
 
-  it('should remove handlers and listeners on destroy', () => {
+  it('should remove handlers on destroy', () => {
     const controller = new LazyLoadController(createLitElement());
     controller.setConfiguration({
       lazyLoad: true,
       lazyUnloadConditions: ['unselected', 'hidden'],
     });
     controller.hostConnected();
-
-    const listener = vi.fn();
-    controller.addListener(listener);
 
     controller.destroy();
 
@@ -87,25 +84,17 @@ describe('LazyLoadController', () => {
       expect.anything(),
     );
     expect(controller.isLoaded()).toBe(false);
-
-    callVisibilityHandler(true);
-    callIntersectionHandler(true);
-    expect(listener).not.toHaveBeenCalled();
   });
 
   describe('should set configuration', () => {
     it('should set loaded if lazy loading set to false', () => {
-      const listener = vi.fn();
       const controller = new LazyLoadController(createLitElement());
-      controller.addListener(listener);
 
       expect(controller.isLoaded()).toBe(false);
-      expect(listener).not.toHaveBeenCalled();
 
       controller.setConfiguration({ lazyLoad: false });
 
       expect(controller.isLoaded()).toBe(true);
-      expect(listener).toHaveBeenCalled();
     });
 
     it('should re-evaluate unload when conditions change while loaded', () => {
@@ -368,34 +357,29 @@ describe('LazyLoadController', () => {
     });
   });
 
-  it('should call listeners', () => {
-    const listener = vi.fn();
-    const controller = new LazyLoadController(createLitElement());
+  it('should request a host update whenever loadedness changes', () => {
+    const host = createLitElement();
+    const controller = new LazyLoadController(host);
     controller.setConfiguration({
       lazyLoad: true,
       lazyUnloadConditions: ['unselected', 'hidden'],
     });
     controller.hostConnected();
-    controller.addListener(listener);
+    vi.mocked(host.requestUpdate).mockClear();
 
     expect(controller.isLoaded()).toBe(false);
 
     callIntersectionHandler(true);
     callVisibilityHandler(true);
-    expect(listener).toHaveBeenLastCalledWith(true);
-    expect(listener).toHaveBeenCalledTimes(1);
+    expect(controller.isLoaded()).toBe(true);
+    expect(host.requestUpdate).toHaveBeenCalledTimes(1);
 
     callIntersectionHandler(false);
-    expect(listener).toHaveBeenLastCalledWith(false);
-    expect(listener).toHaveBeenCalledTimes(2);
+    expect(controller.isLoaded()).toBe(false);
+    expect(host.requestUpdate).toHaveBeenCalledTimes(2);
 
     callIntersectionHandler(true);
-    expect(listener).toHaveBeenLastCalledWith(true);
-    expect(listener).toHaveBeenCalledTimes(3);
-
-    controller.removeListener(listener);
-
-    callIntersectionHandler(false);
-    expect(listener).toHaveBeenCalledTimes(3);
+    expect(controller.isLoaded()).toBe(true);
+    expect(host.requestUpdate).toHaveBeenCalledTimes(3);
   });
 });
