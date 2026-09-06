@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import { getUnixTime } from 'date-fns';
 
 import type { ActionsExecutor } from '../../card-controller/actions/types';
 import type { PTZAction, PTZActionPhase } from '../../config/schema/actions/custom/ptz';
@@ -323,8 +323,15 @@ export class FrigateCamera extends Camera<FrigateCameraInitializationOptions> {
       return { endpoint: cameraURL };
     }
 
-    const eventsURL = `${this._config.frigate.url}/events?camera=${this._config.frigate.camera_name}`;
-    const recordingsURL = `${this._config.frigate.url}/recording/${this._config.frigate.camera_name}`;
+    const eventsURL = `${this._config.frigate.url}/explore?cameras=${this._config.frigate.camera_name}`;
+    const recordingsURL = `${this._config.frigate.url}/review?cameras=${this._config.frigate.camera_name}`;
+
+    // Frigate takes the time as `<camera>_<seconds>` and only reads it from
+    // 0.18. The camera is named as well so earlier versions still filter to it.
+    const getTimestampURL = (startTime: Date | null): string =>
+      startTime
+        ? `${recordingsURL}&timestamp=${this._config.frigate.camera_name}_${getUnixTime(startTime)}`
+        : recordingsURL;
 
     // If media is available, use it for a more precise URL.
     switch (context?.media?.getMediaType()) {
@@ -332,11 +339,8 @@ export class FrigateCamera extends Camera<FrigateCameraInitializationOptions> {
       case 'snapshot':
         return { endpoint: eventsURL };
       case 'recording':
-        const startTime = context.media.getStartTime();
-        return {
-          endpoint:
-            recordingsURL + (startTime ? '/' + format(startTime, 'yyyy-MM-dd/HH') : ''),
-        };
+      case 'review':
+        return { endpoint: getTimestampURL(context.media.getStartTime()) };
     }
 
     // Fall back to using the view.

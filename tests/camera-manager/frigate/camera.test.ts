@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import { getUnixTime } from 'date-fns';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -7,6 +7,7 @@ import { FrigateCamera } from '../../../src/camera-manager/frigate/camera';
 import {
   FrigateEventViewMedia,
   FrigateRecordingViewMedia,
+  FrigateReviewViewMedia,
 } from '../../../src/camera-manager/frigate/media';
 import { getPTZInfo } from '../../../src/camera-manager/frigate/requests';
 import {
@@ -30,6 +31,7 @@ import { ViewMediaType } from '../../../src/view/item';
 import { createCameraConfig } from '../../config/test-utils';
 import { EntityRegistryManagerMock } from '../../ha/registry/entity/mock';
 import {
+  createFrigateReview,
   createHASS,
   createHASSManager,
   createRegistryEntity,
@@ -589,7 +591,7 @@ describe('FrigateCamera', () => {
         );
 
         expect(camera.getEndpoints({ view: 'media', media })?.ui).toEqual({
-          endpoint: 'http://frigate/events?camera=front_door',
+          endpoint: 'http://frigate/explore?cameras=front_door',
         });
       });
 
@@ -626,7 +628,7 @@ describe('FrigateCamera', () => {
         );
 
         expect(camera.getEndpoints({ view: 'media', media })?.ui).toEqual({
-          endpoint: 'http://frigate/events?camera=front_door',
+          endpoint: 'http://frigate/explore?cameras=front_door',
         });
       });
 
@@ -656,8 +658,33 @@ describe('FrigateCamera', () => {
 
         expect(camera.getEndpoints({ view: 'media', media })?.ui).toEqual({
           endpoint:
-            'http://frigate/recording/front_door/' +
-            format(media.getStartTime(), 'yyyy-MM-dd/HH'),
+            'http://frigate/review?cameras=front_door&timestamp=front_door_' +
+            getUnixTime(media.getStartTime()),
+        });
+      });
+
+      it('should return the moment URL for review media', () => {
+        const camera = new FrigateCamera(
+          createCameraConfig({
+            frigate: {
+              url: 'http://frigate',
+              camera_name: 'front_door',
+            },
+          }),
+          mock<CameraManagerEngine>(),
+        );
+        const startTime = new Date('2023-01-01T10:19:00Z');
+        const media = new FrigateReviewViewMedia(
+          'front_door',
+          createFrigateReview({ start_time: getUnixTime(startTime) }),
+          'content-id',
+          'thumbnail',
+        );
+
+        expect(camera.getEndpoints({ view: 'media', media })?.ui).toEqual({
+          endpoint:
+            `http://frigate/review?cameras=front_door` +
+            `&timestamp=front_door_${getUnixTime(startTime)}`,
         });
       });
 
@@ -688,7 +715,7 @@ describe('FrigateCamera', () => {
         );
 
         expect(camera.getEndpoints({ view: 'media', media })?.ui).toEqual({
-          endpoint: 'http://frigate/recording/front_door',
+          endpoint: 'http://frigate/review?cameras=front_door',
         });
       });
 
@@ -703,16 +730,16 @@ describe('FrigateCamera', () => {
           mock<CameraManagerEngine>(),
         );
         expect(camera.getEndpoints({ view: 'clip' })?.ui?.endpoint).toBe(
-          'http://frigate/events?camera=front_door',
+          'http://frigate/explore?cameras=front_door',
         );
         expect(camera.getEndpoints({ view: 'clips' })?.ui?.endpoint).toBe(
-          'http://frigate/events?camera=front_door',
+          'http://frigate/explore?cameras=front_door',
         );
         expect(camera.getEndpoints({ view: 'snapshots' })?.ui?.endpoint).toBe(
-          'http://frigate/events?camera=front_door',
+          'http://frigate/explore?cameras=front_door',
         );
         expect(camera.getEndpoints({ view: 'snapshot' })?.ui?.endpoint).toBe(
-          'http://frigate/events?camera=front_door',
+          'http://frigate/explore?cameras=front_door',
         );
       });
 
@@ -727,10 +754,10 @@ describe('FrigateCamera', () => {
           mock<CameraManagerEngine>(),
         );
         expect(camera.getEndpoints({ view: 'recording' })?.ui?.endpoint).toBe(
-          'http://frigate/recording/front_door',
+          'http://frigate/review?cameras=front_door',
         );
         expect(camera.getEndpoints({ view: 'recordings' })?.ui?.endpoint).toBe(
-          'http://frigate/recording/front_door',
+          'http://frigate/review?cameras=front_door',
         );
       });
 
