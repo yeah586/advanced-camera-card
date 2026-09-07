@@ -96,6 +96,37 @@ describe('AdvancedCameraCardViewerCarousel', () => {
     expect(getSelectedThumbnail(card.card)).toBe(getThumbnails(card.card)[1]);
   });
 
+  it('should resolve each media item only once', async () => {
+    const { card, hass } = await mountCardWithFrigate(EVENTS, {
+      view: { default: 'clips' },
+    });
+
+    const resolvedContentIDs = (): string[] =>
+      hass
+        .getCommandLog()
+        .filter((message) => message.type === 'media_source/resolve_media')
+        .map((message) => String(message['media_content_id']));
+
+    await waitForThumbnails(card, EVENTS.length);
+    await clickThumbnail(card.card, 1);
+    await waitForMediaViewerMedia(card, 'clip.webm?event=older');
+
+    expect(resolvedContentIDs()).toEqual([
+      'media-source://frigate/frigate/event/clips/office/older',
+    ]);
+
+    // Go the next, then previous: should have only asked for 'older' once.
+    await clickNextPreviousMedia(card.card, 'right');
+    await waitForMediaViewerMedia(card, 'clip.webm?event=newer');
+    await clickNextPreviousMedia(card.card, 'left');
+    await waitForMediaViewerMedia(card, 'clip.webm?event=older');
+
+    expect(resolvedContentIDs()).toEqual([
+      'media-source://frigate/frigate/event/clips/office/older',
+      'media-source://frigate/frigate/event/clips/office/newer',
+    ]);
+  });
+
   it('should show the media selected in the thumbnail carousel', async () => {
     const card = await mountViewer(EVENTS, { config: CONFIG_THUMBNAILS_BELOW });
 

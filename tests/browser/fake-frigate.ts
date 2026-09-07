@@ -94,6 +94,7 @@ export const createTestFrigateReview = (
 export interface CardWithFrigate {
   card: MountedCard;
   frigate: FakeFrigate;
+  hass: FakeHASS;
 }
 
 /**
@@ -115,7 +116,7 @@ export const mountCardWithFrigate = async (
     hass,
   );
 
-  return { card, frigate };
+  return { card, frigate, hass };
 };
 
 // An event's media content ID, as `getEventMediaContentID` builds it:
